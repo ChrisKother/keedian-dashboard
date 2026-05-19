@@ -80,6 +80,16 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .st{flex:2;height:7px;background:var(--border);border-radius:3px;overflow:hidden;}
 .sf{height:100%;border-radius:3px;transition:width .4s;}
 .sv{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);width:100px;text-align:right;}
+.bt-tip{position:relative;flex-shrink:0;margin-left:6px;}
+.bti{width:14px;height:14px;border-radius:50%;background:var(--border);color:var(--muted);font-size:9px;display:flex;align-items:center;justify-content:center;cursor:help;font-weight:600;}
+.bt-tip:hover .btb{display:block;}
+.btb{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:#1A202C;color:#E2E8F0;font-size:10px;padding:6px 9px;border-radius:6px;width:240px;white-space:normal;line-height:1.5;z-index:20;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+.btb::after{content:'';position:absolute;top:100%;right:4px;border:5px solid transparent;border-top-color:#1A202C;}
+.sip-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.sip-leg-item{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--muted);}
+.sip-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+#sip-chart .bl{width:65px;text-align:left;}
+#el-chart .bl{width:180px;text-align:left;}
 </style>
 </head>
 <body>
@@ -114,7 +124,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
       <div class="kc" style="border-left:3px solid var(--c1)">
         <div class="lbl">Total Calls</div>
         <div class="val" style="color:var(--c1)" id="v-total">—</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Total outbound calls executed by the bot in the selected period and flow.</div></div>
+        <div class="tip"><div class="ti">?</div><div class="tb">Total calls recorded in the selected period and flow, including all attempts regardless of outcome.</div></div>
       </div>
       <div class="kc" style="border-left:3px solid var(--c10)">
         <div class="lbl">Work Orders</div>
@@ -137,243 +147,102 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
     </div>
   </div>
 
-  <!-- SUMMARY BAND — Operational grouping -->
+  <!-- ROW 2 — Indicadores previos al contacto: Status + SIP bar chart -->
   <div>
-    <div class="slabel">Operational grouping</div>
-    <div class="summary-band">
-      <div class="sb" style="background:#1B3D2F;">
-        <div class="sb-left">
-          <div class="sb-icon">✅</div>
-          <div>
-            <div class="sb-label">Resueltas / Resolved</div>
-            <div class="sb-desc">status in [done, completed] AND call_successful = success</div>
+    <div class="slabel">Indicadores previos al contacto <span class="slabel-desc">· estado y razón de la llamada antes de que el usuario responda · Twilio SIP layer</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+      <div>
+        <div class="slabel" style="font-size:9px;margin-bottom:7px">status <span class="slabel-desc">· resultado agregado de la red</span></div>
+        <div class="kgrid r-status">
+          <div class="kc" style="border-left:3px solid var(--green)">
+            <div class="lbl">done</div>
+            <div class="val" style="color:var(--green)" id="v-done">—</div>
+            <div class="sub" id="p-done"></div>
+            <div class="tip"><div class="ti">?</div><div class="tb">Call connected and ended normally — SIP 200. The bot was able to start a conversation with the recipient.</div></div>
           </div>
-        </div>
-        <div class="sb-right">
-          <div class="sb-val" id="v-resolved">—</div>
-          <div class="sb-pct" id="p-resolved"></div>
+          <div class="kc" style="border-left:3px solid var(--c6)">
+            <div class="lbl">no-answer</div>
+            <div class="val" style="color:var(--c6)" id="v-noanswer">—</div>
+            <div class="sub" id="p-noanswer"></div>
+            <div class="tip"><div class="ti">?</div><div class="tb">Ringing but no one answered — SIP 480 / SIP 487. The destination did not pick up within the configured timeout.</div></div>
+          </div>
+          <div class="kc" style="border-left:3px solid var(--c3)">
+            <div class="lbl">busy</div>
+            <div class="val" style="color:var(--c3)" id="v-busy">—</div>
+            <div class="sub" id="p-busy"></div>
+            <div class="tip"><div class="ti">?</div><div class="tb">Line was busy — SIP 486. The destination was already on another call at the time of the attempt.</div></div>
+          </div>
+          <div class="kc" style="border-left:3px solid var(--red)">
+            <div class="lbl">failed</div>
+            <div class="val" style="color:var(--red)" id="v-failed">—</div>
+            <div class="sub" id="p-failed"></div>
+            <div class="tip"><div class="ti">?</div><div class="tb">Call could not be established — SIP 404 or LLM timeout. The attempt never reached the recipient.</div></div>
+          </div>
+          <div class="kc" style="border-left:3px solid var(--c4)">
+            <div class="lbl">completed</div>
+            <div class="val" style="color:var(--c4)" id="v-completed">—</div>
+            <div class="sub" id="p-completed"></div>
+            <div class="tip"><div class="ti">?</div><div class="tb">Ended by maximum duration limit — SIP 200 + max duration. Functionally equivalent to done; ElevenLabs distinguishes it when forcing closure by time.</div></div>
+          </div>
         </div>
       </div>
-      <div class="sb" style="background:#1D2E4A;">
-        <div class="sb-left">
-          <div class="sb-icon">📵</div>
-          <div>
-            <div class="sb-label">Sin contacto / No Contact</div>
-            <div class="sb-desc">status = no-answer OR busy</div>
-          </div>
+      <div class="chart-card">
+        <div class="ct">Twilio SIP · Razón de no conexión</div>
+        <div class="cs">Motivo específico del rechazo en la red SIP antes de contactar al usuario</div>
+        <div class="sip-legend">
+          <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#7FA1C3"></div>Acción del destinatario</div>
+          <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#E05252"></div>Error de llamada</div>
+          <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#D4940A"></div>Error de configuración</div>
         </div>
-        <div class="sb-right">
-          <div class="sb-val" id="v-nocontact">—</div>
-          <div class="sb-pct" id="p-nocontact"></div>
-        </div>
-      </div>
-      <div class="sb" style="background:#3D1B1B;">
-        <div class="sb-left">
-          <div class="sb-icon">⚠️</div>
-          <div>
-            <div class="sb-label">Problemas / Issues</div>
-            <div class="sb-desc">status = failed OR call_successful = failure</div>
-          </div>
-        </div>
-        <div class="sb-right">
-          <div class="sb-val" id="v-problems">—</div>
-          <div class="sb-pct" id="p-problems"></div>
-        </div>
+        <div id="sip-chart"></div>
       </div>
     </div>
   </div>
 
-  <!-- ROW 2 — status · SIP network layer -->
+  <!-- ROW 3 — call_successful · in-call evaluation -->
   <div>
-    <div class="slabel">status <span class="slabel-desc">· SIP network layer — resultado de la llamada antes/durante la conexión · Origin: ElevenLabs / Twilio</span></div>
-    <div class="kgrid r-status">
-      <div class="kc" style="border-left:3px solid var(--green)">
-        <div class="lbl">done</div>
-        <div class="val" style="color:var(--green)" id="v-done">—</div>
-        <div class="sub" id="p-done"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Llamada conectó y terminó normalmente — SIP 200. El bot pudo iniciar conversación con el destino.</div></div>
-      </div>
-      <div class="kc" style="border-left:3px solid var(--c6)">
-        <div class="lbl">no-answer</div>
-        <div class="val" style="color:var(--c6)" id="v-noanswer">—</div>
-        <div class="sub" id="p-noanswer"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Sonó pero nadie contestó — SIP 480 / SIP 487. El destino no levantó dentro del timeout configurado.</div></div>
-      </div>
-      <div class="kc" style="border-left:3px solid var(--c3)">
-        <div class="lbl">busy</div>
-        <div class="val" style="color:var(--c3)" id="v-busy">—</div>
-        <div class="sub" id="p-busy"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Línea ocupada — SIP 486. El destino estaba en otra llamada al momento del intento.</div></div>
-      </div>
-      <div class="kc" style="border-left:3px solid var(--red)">
-        <div class="lbl">failed</div>
-        <div class="val" style="color:var(--red)" id="v-failed">—</div>
-        <div class="sub" id="p-failed"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">No pudo establecerse la llamada — SIP 404 o timeout LLM. El intento nunca llegó a conectar.</div></div>
-      </div>
-      <div class="kc" style="border-left:3px solid var(--c4)">
-        <div class="lbl">completed</div>
-        <div class="val" style="color:var(--c4)" id="v-completed">—</div>
-        <div class="sub" id="p-completed"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Terminada por máxima duración — SIP 200 + max duration. Equivalente funcional a done; ElevenLabs la distingue cuando fuerza el cierre por tiempo.</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROW 3 — call_successful · post-contact evaluation -->
-  <div>
-    <div class="slabel">call_successful <span class="slabel-desc">· ElevenLabs LLM post-call analysis — evaluación del objetivo del bot una vez establecido contacto</span></div>
+    <div class="slabel">Indicadores durante la llamada telefónica <span class="slabel-desc">· ElevenLabs LLM post-call analysis — bot objective evaluation once contact was established</span></div>
     <div class="kgrid r-cs">
       <div class="kc" style="border-left:3px solid var(--green)">
         <div class="lbl">success</div>
         <div class="val" style="color:var(--green)" id="v-cs-success">—</div>
         <div class="sub" id="p-cs-success"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">El bot logró su objetivo durante la conversación — LLM evaluó el script como completado exitosamente.</div></div>
+        <div class="tip"><div class="ti">?</div><div class="tb">The bot achieved its objective during the conversation — the LLM evaluated the script as successfully completed.</div></div>
       </div>
       <div class="kc" style="border-left:3px solid var(--red)">
         <div class="lbl">failure</div>
         <div class="val" style="color:var(--red)" id="v-cs-failure">—</div>
         <div class="sub" id="p-cs-failure"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Hubo conversación pero el objetivo no se cumplió — el interlocutor no siguió el script o el bot no pudo completar la tarea.</div></div>
+        <div class="tip"><div class="ti">?</div><div class="tb">There was a conversation but the objective was not met — the recipient did not follow the script or the bot could not complete the task.</div></div>
       </div>
       <div class="kc" style="border-left:3px solid var(--muted)">
-        <div class="lbl">(sin análisis)</div>
+        <div class="lbl">(no analysis)</div>
         <div class="val" style="color:var(--muted)" id="v-cs-empty">—</div>
         <div class="sub" id="p-cs-empty"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Sin evaluación ElevenLabs — no hubo conversación real o la llamada fue demasiado corta para que el LLM analizara.</div></div>
+        <div class="tip"><div class="ti">?</div><div class="tb">No ElevenLabs evaluation — no real conversation took place or the call was too short for the LLM to analyze.</div></div>
       </div>
       <div class="kc" style="border-left:3px solid var(--orange)">
         <div class="lbl">voicemail</div>
         <div class="val" style="color:var(--orange)" id="v-cs-vm">—</div>
         <div class="sub" id="p-cs-vm"></div>
-        <div class="tip"><div class="ti">?</div><div class="tb">El bot se encontró con un buzón de voz o sistema automático — no hubo contacto humano real.</div></div>
+        <div class="tip"><div class="ti">?</div><div class="tb">The bot reached a voicemail or automated system — no real human contact was made.</div></div>
       </div>
     </div>
   </div>
 
-  <!-- ROW 4 — terminationReason · ElevenLabs layer -->
+  <!-- ROW 4 — Indicadores de cierre de llamada · ElevenLabs layer -->
   <div>
-    <div class="slabel">terminationReason <span class="slabel-desc">· ElevenLabs WebSocket/LLM layer — llamada conectó</span></div>
-    <div class="kgrid r-tr-el">
-      <div class="cc" style="border-top:3px solid var(--c1)">
-        <span class="em">🔌</span>
-        <div class="lbl">Client disconnected: 1005</div>
-        <div class="val" style="color:var(--c1)" id="v-tr-1005">—</div>
-        <div class="pct" id="p-tr-1005"></div>
-        <div class="pill">normal · &gt;54%</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Desconexión normal — WebSocket RFC 6455 code 1005, sin frame de cierre explícito. Es la terminación estándar de una llamada completada. NO es un error.</div></div>
+    <div class="slabel">Indicadores de cierre de llamada <span class="slabel-desc">· ElevenLabs WebSocket/LLM layer — connected call termination type · % of connected calls</span></div>
+    <div class="chart-card">
+      <div class="ct">ElevenLabs · Call Closure Type</div>
+      <div class="cs">How connected calls ended — percentage over connected calls (done + completed)</div>
+      <div class="sip-legend">
+        <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#68BBA8"></div>Normal / expected closure</div>
+        <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#38B26A"></div>Bot-initiated closure</div>
+        <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#D4940A"></div>Attention</div>
+        <div class="sip-leg-item"><div class="sip-leg-dot" style="background:#E05252"></div>Error</div>
       </div>
-      <div class="cc" style="border-top:3px solid var(--green)">
-        <span class="em">🤖</span>
-        <div class="lbl">end_call tool</div>
-        <div class="val" style="color:var(--green)" id="v-tr-end">—</div>
-        <div class="pct" id="p-tr-end"></div>
-        <div class="pill">agent action</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">El agente IA decidió terminar usando la herramienta end_call del script — cierre controlado por el bot al completar el objetivo.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c6)">
-        <span class="em">📴</span>
-        <div class="lbl">Remote party ended</div>
-        <div class="val" style="color:var(--c6)" id="v-tr-remote">—</div>
-        <div class="pct" id="p-tr-remote"></div>
-        <div class="pill">remote hangup</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Call ended by remote party — el interlocutor colgó antes de que el bot terminara el script.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--yellow)">
-        <span class="em">⏰</span>
-        <div class="lbl">Max duration exceeded</div>
-        <div class="val" style="color:var(--yellow)" id="v-tr-maxdur">—</div>
-        <div class="pct" id="p-tr-maxdur"></div>
-        <div class="pill">correlates: completed</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">La conversación alcanzó el tiempo máximo configurado en ElevenLabs. Correlaciona con status=completed.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c9)">
-        <span class="em">⚡</span>
-        <div class="lbl">Client disconnected: 1006</div>
-        <div class="val" style="color:var(--c9)" id="v-tr-1006">—</div>
-        <div class="pct" id="p-tr-1006"></div>
-        <div class="pill">abnormal close</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">WebSocket close code 1006 — cierre anormal sin handshake de cierre. Puede indicar caída de red o fallo inesperado.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--muted)">
-        <span class="em">🔇</span>
-        <div class="lbl">No user audio</div>
-        <div class="val" style="color:var(--muted)" id="v-tr-nouser">—</div>
-        <div class="pct" id="p-tr-nouser"></div>
-        <div class="pill">voicemail / silent</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">No user message received for a long period — no se detectó audio del usuario. Indica buzón de voz silencioso o línea muerta.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--orange)">
-        <span class="em">⚠️</span>
-        <div class="lbl">LLM timeout</div>
-        <div class="val" style="color:var(--orange)" id="v-tr-llm">—</div>
-        <div class="pct" id="p-tr-llm"></div>
-        <div class="pill">infra issue</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">Generating the LLM response took too long — timeout del modelo. La respuesta del agente tardó demasiado y ElevenLabs terminó la llamada.</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROW 5 — terminationReason · Twilio SIP layer -->
-  <div>
-    <div class="slabel">terminationReason <span class="slabel-desc">· Twilio SIP layer — llamada no conectó</span></div>
-    <div class="kgrid r-tr-sip">
-      <div class="cc" style="border-top:3px solid var(--c2)">
-        <span class="em">📵</span>
-        <div class="lbl">SIP 487</div>
-        <div class="val" style="color:var(--c2)" id="v-tr-487">—</div>
-        <div class="pct" id="p-tr-487"></div>
-        <div class="pill">Request Terminated</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">487 Request Terminated — llamada cancelada antes de ser respondida. Timeout o cuelgue del originador. Equivale a no-answer.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c7)">
-        <span class="em">📶</span>
-        <div class="lbl">SIP 480</div>
-        <div class="val" style="color:var(--c7)" id="v-tr-480">—</div>
-        <div class="pct" id="p-tr-480"></div>
-        <div class="pill">Temporarily Unavailable</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">480 Temporarily Unavailable — destinatario temporalmente no disponible. Equivale a no-answer.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c3)">
-        <span class="em">📞</span>
-        <div class="lbl">SIP 486</div>
-        <div class="val" style="color:var(--c3)" id="v-tr-486">—</div>
-        <div class="pct" id="p-tr-486"></div>
-        <div class="pill">Busy Here</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">486 Busy Here — línea ocupada al momento del intento de llamada.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--yellow)">
-        <span class="em">❓</span>
-        <div class="lbl">SIP 404</div>
-        <div class="val" style="color:var(--yellow)" id="v-tr-404">—</div>
-        <div class="pct" id="p-tr-404"></div>
-        <div class="pill">Not Found</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">404 Not Found — número no encontrado o no enrutado. Error de configuración o número inválido en el sistema.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--red)">
-        <span class="em">🔥</span>
-        <div class="lbl">SIP 500</div>
-        <div class="val" style="color:var(--red)" id="v-tr-500">—</div>
-        <div class="pct" id="p-tr-500"></div>
-        <div class="pill">Server Error</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">500 Server Internal Error — error interno del servidor SIP. Requiere revisión de configuración de troncal.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c8)">
-        <span class="em">🚫</span>
-        <div class="lbl">SIP 403</div>
-        <div class="val" style="color:var(--c8)" id="v-tr-403">—</div>
-        <div class="pct" id="p-tr-403"></div>
-        <div class="pill">Forbidden</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">403 Forbidden — llamada rechazada por el servidor. Posible problema de autenticación o permisos de troncal.</div></div>
-      </div>
-      <div class="cc" style="border-top:3px solid var(--c10)">
-        <span class="em">🙅</span>
-        <div class="lbl">SIP 603</div>
-        <div class="val" style="color:var(--c10)" id="v-tr-603">—</div>
-        <div class="pct" id="p-tr-603"></div>
-        <div class="pill">Decline</div>
-        <div class="tip"><div class="ti">?</div><div class="tb">603 Decline — el destino rechazó explícitamente la llamada.</div></div>
-      </div>
+      <div id="el-chart"></div>
     </div>
   </div>
 
@@ -395,11 +264,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
         <div class="cs">Total calls per configured bot flow</div>
         <div id="flow-chart"></div>
       </div>
-      <div class="chart-card">
-        <div class="ct">Top Termination Reasons</div>
-        <div class="cs">Most frequent terminationReason values (top 8)</div>
-        <div id="term-chart"></div>
-      </div>
     </div>
   </div>
 
@@ -415,8 +279,41 @@ const TERM_COLORS={
   'Client disconnected: 1005':'#6B8FD6','end_call tool was called.':'#38B26A',
   'Call ended by remote party':'#7FA1C3','Conversation has exceeded maximum duration':'#D4940A',
   'Client disconnected: 1006':'#E3A9A0',
-  'SIP 487':'#7BBFE2','SIP 480':'#73D8DE','SIP 486':'#8C7AD9',
-  'SIP 404':'#D4940A','SIP 500':'#E05252','SIP 403':'#C57FA8','SIP 603':'#BFCFF3'
+  'SIP 487':'#7FA1C3','SIP 480':'#7FA1C3','SIP 486':'#7FA1C3','SIP 603':'#7FA1C3',
+  'SIP 403':'#E05252','SIP 500':'#E05252',
+  'SIP 404':'#D4940A'
+};
+const SIP_TOOLTIPS={
+  'SIP 487':'487 Request Terminated — call cancelled before being answered. The recipient did not pick up within the configured timeout. This is a receiver-side action, equivalent to no-answer.',
+  'SIP 480':'480 Temporarily Unavailable — recipient is temporarily unavailable. The receiver cannot attend at this time. Receiver-side action, equivalent to no-answer.',
+  'SIP 486':'486 Busy Here — line was busy at the time of the attempt. The recipient was already on another active call. Receiver-side action.',
+  'SIP 603':'603 Decline — destination explicitly rejected the call. The recipient actively hung up. Receiver-side action.',
+  'SIP 403':'403 Forbidden — call rejected by the SIP server. Possible authentication issue or trunk permission problem. Call-level error.',
+  'SIP 500':'500 Server Internal Error — internal SIP server error. Requires review of trunk configuration. Call-level error.',
+  'SIP 404':'404 Not Found — number not found or not routed. Configuration error or invalid/mistyped number in the system.'
+};
+const EL_TOOLTIPS={
+  'Client disconnected: 1005':'WebSocket RFC 6455 code 1005 — normal close without an explicit close frame. This is the standard termination for a completed call. NOT an error.',
+  'end_call tool was called.':'The AI agent decided to end the call using the end_call tool in the script — a controlled closure by the bot after completing its objective.',
+  'Call ended by remote party':'Call ended by remote party — the recipient hung up before the bot finished the script.',
+  'Conversation has exceeded maximum duration':'The conversation reached the maximum duration configured in ElevenLabs. Correlates with status = completed.',
+  'Client disconnected: 1006':'WebSocket close code 1006 — abnormal close without a closing handshake. May indicate a network drop or unexpected failure.',
+  'No user message received':'No user audio detected for an extended period. Indicates a silent voicemail or dead line.',
+  'Generating the LLM response':'LLM response generation timed out — the model took too long to reply and ElevenLabs ended the call. Infrastructure issue.'
+};
+const EL_COLORS={
+  'Client disconnected: 1005':'#68BBA8',
+  'end_call tool was called.':'#38B26A',
+  'Call ended by remote party':'#7FA1C3',
+  'Conversation has exceeded maximum duration':'#D4940A',
+  'Client disconnected: 1006':'#E3A9A0',
+  'No user message received':'#64748B',
+  'Generating the LLM response':'#E05252'
+};
+const SIP_COLORS={
+  'SIP 487':'#7FA1C3','SIP 480':'#7FA1C3','SIP 486':'#7FA1C3','SIP 603':'#7FA1C3',
+  'SIP 403':'#E05252','SIP 500':'#E05252',
+  'SIP 404':'#D4940A'
 };
 
 function getFilters(){
@@ -466,6 +363,7 @@ function compute(rows){
   const trDisc1006 =rows.filter(r=>r[9]==='Client disconnected: 1006').length;
   const trNoUser   =rows.filter(r=>r[9].startsWith('No user message received')).length;
   const trLLM      =rows.filter(r=>r[9].startsWith('Generating the LLM response')).length;
+  const connectedCalls=rows.filter(r=>r[3]==='done'||r[3]==='completed').length;
 
   // terminationReason — Twilio SIP layer
   const trSIP487=rows.filter(r=>r[9]==='SIP 487').length;
@@ -481,13 +379,11 @@ function compute(rows){
   const grpSinContacto=rows.filter(r=>['no-answer','busy'].includes(r[3])).length;
   const grpProblemas  =rows.filter(r=>r[3]==='failed'||r[4]==='failure').length;
 
-  const statusDist={},flowDist={},termDist={};
+  const statusDist={},flowDist={};
   rows.forEach(r=>{
     statusDist[r[3]]=(statusDist[r[3]]||0)+1;
     const f=r[5]||'(unassigned)'; flowDist[f]=(flowDist[f]||0)+1;
-    if(r[9]) termDist[r[9]]=(termDist[r[9]]||0)+1;
   });
-  const topTerms=Object.entries(termDist).sort((a,b)=>b[1]-a[1]).slice(0,8);
   const hm=Array.from({length:24},()=>new Array(7).fill(0));
   rows.forEach(r=>{if(r[0]) hm[r[1]][r[2]]++;});
   const rowTots=hm.map(row=>row.reduce((a,b)=>a+b,0));
@@ -500,8 +396,8 @@ function compute(rows){
     csSuccess,csFailure,csEmpty,csVoicemail,
     trDisc1005,trEndCall,trRemote,trMaxDur,trDisc1006,trNoUser,trLLM,
     trSIP487,trSIP480,trSIP486,trSIP404,trSIP500,trSIP403,trSIP603,
-    grpResueltas,grpSinContacto,grpProblemas,
-    statusDist,flowDist,topTerms,hm,rowTots,colTots,
+    connectedCalls,
+    statusDist,flowDist,hm,rowTots,colTots,
     dateFrom:dates[0]||'',dateTo:dates[dates.length-1]||''
   };
 }
@@ -518,6 +414,44 @@ function renderBarChart(cid,entries,total,colorMap,def){
   }).join('');
 }
 
+function renderELChart(d){
+  const c=document.getElementById('el-chart');if(!c)return;
+  const base=d.connectedCalls||d.total;
+  const entries=[
+    ['Client disconnected: 1005',d.trDisc1005],
+    ['end_call tool was called.',d.trEndCall],
+    ['Call ended by remote party',d.trRemote],
+    ['Conversation has exceeded maximum duration',d.trMaxDur],
+    ['Client disconnected: 1006',d.trDisc1006],
+    ['No user message received',d.trNoUser],
+    ['Generating the LLM response',d.trLLM]
+  ].sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  c.innerHTML=entries.map(([label,count])=>{
+    const color=EL_COLORS[label]||'#BFCFF3';
+    const w=(count/max*100).toFixed(1);
+    const tip=(EL_TOOLTIPS[label]||'');
+    return `<div class="br" style="align-items:center"><div class="bl">${label}</div><div class="bt"><div class="bf" style="width:${w}%;background:${color}"></div></div><div class="bv">${fmt(count)}&nbsp;&middot;&nbsp;${pct(count,base)}</div><div class="bt-tip"><div class="bti">?</div><div class="btb">${tip}</div></div></div>`;
+  }).join('');
+}
+
+function renderSIPChart(d){
+  const c=document.getElementById('sip-chart');if(!c)return;
+  const entries=[
+    ['SIP 487',d.trSIP487],['SIP 480',d.trSIP480],
+    ['SIP 486',d.trSIP486],['SIP 603',d.trSIP603],
+    ['SIP 403',d.trSIP403],['SIP 500',d.trSIP500],
+    ['SIP 404',d.trSIP404]
+  ].sort((a,b)=>b[1]-a[1]);
+  const max=Math.max(...entries.map(e=>e[1]),1);
+  c.innerHTML=entries.map(([label,count])=>{
+    const color=SIP_COLORS[label]||'#BFCFF3';
+    const w=(count/max*100).toFixed(1);
+    const tip=(SIP_TOOLTIPS[label]||'');
+    return `<div class="br" style="align-items:center"><div class="bl">${label}</div><div class="bt"><div class="bf" style="width:${w}%;background:${color}"></div></div><div class="bv">${fmt(count)}&nbsp;&middot;&nbsp;${pct(count,d.total)}</div><div class="bt-tip"><div class="bti">?</div><div class="btb">${tip}</div></div></div>`;
+  }).join('');
+}
+
 function renderStatusChart(dist,total){
   const c=document.getElementById('status-chart');if(!c)return;
   const entries=Object.entries(dist).sort((a,b)=>b[1]-a[1]);
@@ -530,10 +464,11 @@ function renderStatusChart(dist,total){
 }
 
 function heatColor(v,max){
-  if(!v)return{bg:'#f8fafc',fg:'#cbd5e1'};
-  const t=Math.pow(v/max,0.65);
-  const l=Math.round(94-t*62),s=Math.round(60+t*20);
-  return{bg:`hsl(213,${s}%,${l}%)`,fg:l<55?'#fff':'#1e293b'};
+  if(!v)return{bg:'#f0f4f8',fg:'#b0bec5'};
+  const t=Math.pow(v/max,0.5);
+  const r=Math.round(219-189*t),g=Math.round(234-170*t),b=Math.round(254-79*t);
+  const bright=0.299*r+0.587*g+0.114*b;
+  return{bg:`rgb(${r},${g},${b})`,fg:bright>145?'#1e3a5f':'#fff'};
 }
 
 function renderHeatmap(hm,rowTots,colTots){
@@ -567,14 +502,6 @@ function render(d){
   document.getElementById('v-dur').innerHTML=`${(d.avgDurSec/60).toFixed(2)}<span style="font-size:13px;font-weight:400"> min</span>`;
   set('s-dur',`${Math.round(d.avgDurSec)} sec avg`);
 
-  // summary band
-  set('v-resolved',fmt(d.grpResueltas));
-  set('p-resolved',pct(d.grpResueltas,d.total));
-  set('v-nocontact',fmt(d.grpSinContacto));
-  set('p-nocontact',pct(d.grpSinContacto,d.total));
-  set('v-problems',fmt(d.grpProblemas));
-  set('p-problems',pct(d.grpProblemas,d.total));
-
   // status
   set('v-done',fmt(d.statusDone));          set('p-done',pct(d.statusDone,d.total));
   set('v-noanswer',fmt(d.statusNoAnswer));  set('p-noanswer',pct(d.statusNoAnswer,d.total));
@@ -588,27 +515,10 @@ function render(d){
   set('v-cs-empty',fmt(d.csEmpty));         set('p-cs-empty',pct(d.csEmpty,d.total));
   set('v-cs-vm',fmt(d.csVoicemail));        set('p-cs-vm',pct(d.csVoicemail,d.total));
 
-  // terminationReason — ElevenLabs
-  set('v-tr-1005',fmt(d.trDisc1005));   set('p-tr-1005',pct(d.trDisc1005,d.total));
-  set('v-tr-end',fmt(d.trEndCall));     set('p-tr-end',pct(d.trEndCall,d.total));
-  set('v-tr-remote',fmt(d.trRemote));   set('p-tr-remote',pct(d.trRemote,d.total));
-  set('v-tr-maxdur',fmt(d.trMaxDur));   set('p-tr-maxdur',pct(d.trMaxDur,d.total));
-  set('v-tr-1006',fmt(d.trDisc1006));   set('p-tr-1006',pct(d.trDisc1006,d.total));
-  set('v-tr-nouser',fmt(d.trNoUser));   set('p-tr-nouser',pct(d.trNoUser,d.total));
-  set('v-tr-llm',fmt(d.trLLM));         set('p-tr-llm',pct(d.trLLM,d.total));
-
-  // terminationReason — Twilio SIP
-  set('v-tr-487',fmt(d.trSIP487)); set('p-tr-487',pct(d.trSIP487,d.total));
-  set('v-tr-480',fmt(d.trSIP480)); set('p-tr-480',pct(d.trSIP480,d.total));
-  set('v-tr-486',fmt(d.trSIP486)); set('p-tr-486',pct(d.trSIP486,d.total));
-  set('v-tr-404',fmt(d.trSIP404)); set('p-tr-404',pct(d.trSIP404,d.total));
-  set('v-tr-500',fmt(d.trSIP500)); set('p-tr-500',pct(d.trSIP500,d.total));
-  set('v-tr-403',fmt(d.trSIP403)); set('p-tr-403',pct(d.trSIP403,d.total));
-  set('v-tr-603',fmt(d.trSIP603)); set('p-tr-603',pct(d.trSIP603,d.total));
-
+  renderELChart(d);
+  renderSIPChart(d);
   renderStatusChart(d.statusDist,d.total);
   renderBarChart('flow-chart',Object.entries(d.flowDist).sort((a,b)=>b[1]-a[1]),d.total,FLOW_COLORS,'#BFCFF3');
-  renderBarChart('term-chart',d.topTerms,d.total,TERM_COLORS,'#BFCFF3');
   renderHeatmap(d.hm,d.rowTots,d.colTots);
   set('hm-subtitle',`Peak demand by hour and day · color = volume · ${fmt(d.total)} calls`);
 }
